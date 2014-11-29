@@ -92,4 +92,4 @@ stty -echo
 
 # Now start the threading agent
 echo "* Starting the threading agent..."
-python lba_agent.py -m $TMPDIR/snmpd-agentx.sock -p $TMPDIR/
+python agent_cli.py -m $TMPDIR/snmpd-agentx.sock -p $TMPDIR/

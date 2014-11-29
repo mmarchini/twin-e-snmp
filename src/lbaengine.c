@@ -582,7 +582,7 @@ int createSocket() {
         sprintf(tmp_dir, P_tmpdir);
     }
     printf("Usando: '%s'\n", tmp_dir);
-    sprintf(socket_file, "%s/socket", tmp_dir);
+    sprintf(socket_file, "%s/twin_socket", tmp_dir);
     free(tmp_dir);
 
     // Cria o socket
