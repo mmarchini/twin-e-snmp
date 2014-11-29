@@ -555,20 +555,7 @@ int32 gameEngineMainLoop(){
     return 0;
 }
 
-int gameEngineSocketLoop(void *sockfdArg) {
-    int *sockfd = (int *) sockfdArg;
-    int conn;
-
-    printf("[Socket Reporter] Aguardando conexao...");
-    conn = accept(*sockfd, NULL, NULL);
-    printf("[Socket Reporter] Conexao Estabelecida...");
-
-    socketMainLoop(conn);
-
-    return 0;
-}
-
-int createSocket() {
+int connectToSocket() {
     // Declara as variáveis
     int sockfd;
     struct sockaddr_un serv_addr;
@@ -577,48 +564,63 @@ int createSocket() {
     char *tmp_dir = getenv("TMPDIR");
 
     if(!tmp_dir){
-        printf("Nao achou TMPDIR\n");
+        printf("[Socket Reporter] Nao achou TMPDIR\n");
         tmp_dir = calloc(sizeof(P_tmpdir), sizeof(char));
         sprintf(tmp_dir, P_tmpdir);
     }
-    printf("Usando: '%s'\n", tmp_dir);
+    printf("[Socket Reporter] Usando: '%s'\n", tmp_dir);
     sprintf(socket_file, "%s/twin_socket", tmp_dir);
     free(tmp_dir);
 
+    printf("[Socket Reporter] Crando o socket\n");
     // Cria o socket
     sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (sockfd < 0) 
-       printf("ERROR opening socket");
+    if (sockfd < 0) {
+       printf("[Socket Reporter] ERROR opening socket\n");
+       return -1;
+    } 
 
+    printf("[Socket Reporter] Preparando o endereco\n");
     // Prepara o nome do socket
     memset(&serv_addr, 0, sizeof(serv_addr));
     serv_addr.sun_family = AF_UNIX;
     strncpy(serv_addr.sun_path, socket_file, sizeof(serv_addr.sun_path)-1);
 
-    unlink(serv_addr.sun_path);
-
+    printf("[Socket Reporter] Tentando conectar...\n");
     // Associa ele com o arquivo
-    if (bind(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)))
-        printf("ERROR on binding");
-
-    // Começa a escutar o socket 
-    listen(sockfd,5);
+    if (connect(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
+        printf("[Socket Reporter] ERROR on binding");
+        return -1;
+    }
+    printf("[Socket Reporter] Socket conectado\n");
 
     return sockfd;
 };
+
+int gameEngineSocketLoop() {
+    int sockfd;
+
+    printf("[Socket Reporter] Aguardando conexao...\n");
+    sockfd = connectToSocket();
+    if(sockfd < 0)
+        return -1;
+    printf("[Socket Reporter] Conexao Estabelecida...");
+
+    socketMainLoop(sockfd);
+
+    return 0;
+}
 
 /** Game engine main loop
     @return true if we want to show credit sequence */
 int32 gameEngineLoop() { // mainLoop
     SDL_Thread *main_loop, *socket_loop;
     int32 main_loop_return;
-    int sockfd;
 
-    sockfd = createSocket();
     end_game_cond = SDL_CreateCond();
 
     main_loop = SDL_CreateThread(gameEngineMainLoop, (void *)NULL);
-    socket_loop = SDL_CreateThread(gameEngineSocketLoop, (void *)(&sockfd));
+    socket_loop = SDL_CreateThread(gameEngineSocketLoop, (void *)NULL);
 
     // Depois paramos o jogo
     SDL_WaitThread(main_loop, &main_loop_return);

@@ -11,25 +11,66 @@ prgname = sys.argv[0]
 class TwinSocket(object):
 
     def __init__(self, socket_file):
-        # Create a UDS socket
         self._lock = threading.Lock()
+
+        try:
+            os.unlink(socket_file)
+        except OSError:
+            if os.path.exists(socket_file):
+                raise
+
+        # Create a UDS socket
         self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 
         # Connect the socket to the port where the server is listening
-        print "Conectando (%s)..."%socket_file
-        self.sock.connect(socket_file)
-        print "Conectado!"
+        print "Criando o socket em '%s'..."%socket_file
+        self.sock.bind(socket_file)
+        self.sock.listen(0)
+        print "Socket criado!"
+
+        self._client = None
+        self._connect()
+
+    def _connect(self):
+        def acceptClient():
+            while True:
+                while self._client:
+                    pass
+                print "Esperando alguem conectar..."
+                self._client, addr = self.sock.accept()
+                print "Novo cliente conectado!"
+
+        t = threading.Thread(target=acceptClient, name="UpdateSNMPObjsThread")
+        t.daemon = True
+        t.start()
 
     def _communicate(self, method):
         striped = None
+
+        if not self._client:
+            return None
+
         with self._lock:
-            self.sock.send("%d"%method)
-            output = self.sock.recv(255)
+            # Request data
+            try:
+                str_method = "%d"%method
+                str_method += "\0"*(255-len(str_method)) # padding
+                self._client.send(str_method)
+            except socket.error:
+                self._client = None
+                return None
+
+            # Returned data
+            output = self._client.recv(255)
             striped = output.strip("\0")
+
         return striped
 
     def getLife(self,):
-        return int(self._communicate(0))
+        returned_value = self._communicate(0)
+        if returned_value == None:
+            return 0
+        return int(returned_value)
 
 class LBAAgent(object):
 

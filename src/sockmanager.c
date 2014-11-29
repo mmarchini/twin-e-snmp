@@ -20,14 +20,15 @@ Lista de coisas:
 
 #include "actor.h"
 #include "scene.h"
+#include "gamestate.h"
 #include "sockmanager.h"
 
 // "SocketAction"
 
 enum SocketAction {
-    getLife      = 0,
-    getMP        = 1,
-    getBehaviour = 2
+    getLife        = 0,
+    getMagicPoints = 1,
+    getBehaviour   = 2
 };
 
 int socketMainLoop(int sockfd) {
@@ -50,14 +51,14 @@ int socketMainLoop(int sockfd) {
                 printf("[Socket Reporter] Enviando: '%s'\n", buffer);
                 write(sockfd, buffer, 255);
                 break;
-            case getMP:
+            case getMagicPoints:
                 bzero(buffer, 256);
-                sprintf(buffer, "%d", sceneHero->life);
+                sprintf(buffer, "%d", inventoryMagicPoints);
                 write(sockfd, buffer, 255);
                 break;
             case getBehaviour:
                 bzero(buffer, 256);
-                sprintf(buffer, "%d", sceneHero->life);
+                sprintf(buffer, "%d", heroBehaviour);
                 write(sockfd, buffer, 255);
                 break;
             default:
