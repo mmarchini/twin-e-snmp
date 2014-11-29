@@ -8,7 +8,7 @@ LBA-MIB DEFINITIONS ::= BEGIN
 
 -- Imports
 IMPORTS
-    MODULE-IDENTITY, OBJECT-TYPE, Integer32, enterprises
+    MODULE-IDENTITY, OBJECT-TYPE, Integer32, Unsigned32, enterprises
         FROM SNMPv2-SMI
     DisplayString
         FROM SNMPv2-TC
@@ -34,36 +34,220 @@ lbaMIB MODULE-IDENTITY
 
 -- Definition of MIB's root nodes
 
-lbaMIBObjects         OBJECT IDENTIFIER ::= { lbaMIB 1 }
-lbaMIBConformance     OBJECT IDENTIFIER ::= { lbaMIB 3 }
-
-twsnAttrs            OBJECT IDENTIFIER ::= { lbaMIBObjects 1 }
+lbaGameStats         OBJECT IDENTIFIER ::= { lbaMIB 1 }
+lbaHeroStats         OBJECT IDENTIFIER ::= { lbaMIB 2 }
+lbaHeroBehaviour     OBJECT IDENTIFIER ::= { lbaMIB 3 }
+lbaMIBConformance    OBJECT IDENTIFIER ::= { lbaMIB 4 }
 
 ------------------------------------------------------------------------
--- Scalars
+-- LBA Game Statistics 
 ------------------------------------------------------------------------
 
-twsnLife OBJECT-TYPE
+lbaGameRunning OBJECT-TYPE
     SYNTAX      Integer32 
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION
-        "A string. Curious about its contents?"
-    ::= { twsnAttrs 1 }
+        "0 se o jogo esta desligado, 1 se o jogo esta rodando.
+        Quando o jogo esta desligado, os outros valores da MIB
+        podem estar inconsistentes."
+    ::= { lbaGameStats 1 }
+
+lbaGamePaused OBJECT-TYPE
+    SYNTAX      Integer32 
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "0 se o jogo esta rodando, 1 se o jogo esta pausado."
+    ::= { lbaGameStats 2 }
+
+lbaGamePlayerName OBJECT-TYPE
+    SYNTAX      DisplayString 
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "O nome do jogador"
+    ::= { lbaGameStats 3 }
+
+------------------------------------------------------------------------
+-- LBA Hero Statistics 
+------------------------------------------------------------------------
+
+lbaHeroMaxLife OBJECT-TYPE
+    SYNTAX      Integer32 
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "O nome do jogador."
+    ::= { lbaHeroStats 1 }
+
+lbaHeroCurLife OBJECT-TYPE
+    SYNTAX      Integer32 
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "O nome do jogador."
+    ::= { lbaHeroStats 2 }
+
+lbaHeroMaxMP OBJECT-TYPE
+    SYNTAX      Integer32 
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "O nome do jogador."
+    ::= { lbaHeroStats 3 }
+
+lbaHeroCurMP OBJECT-TYPE
+    SYNTAX      Integer32 
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "O nome do jogador."
+    ::= { lbaHeroStats 4 }
+
+lbaHeroKeys OBJECT-TYPE
+    SYNTAX      Integer32 
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "O nome do jogador."
+    ::= { lbaHeroStats 5 }
+
+lbaHeroCash OBJECT-TYPE
+    SYNTAX      Integer32 
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "O nome do jogador."
+    ::= { lbaHeroStats 6 }
+
+lbaHeroLeafTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF LbaHeroLeafEntry 
+    MAX-ACCESS  not-accessible 
+    STATUS      current
+    DESCRIPTION
+        "O nome do jogador."
+    ::= { lbaHeroStats 7 }
+
+lbaHeroLeafEntry OBJECT-TYPE
+    SYNTAX     LbaHeroLeafEntry
+    MAX-ACCESS not-accessible 
+    STATUS     current
+    DESCRIPTION
+        "Linha de"
+        INDEX { lbaHeroLeafID }
+    ::= { lbaHeroLeafTable 1 }
+
+LbaHeroLeafEntry ::= SEQUENCE {
+    lbaHeroLeafID     Unsigned32,
+    lbaHeroLeafFilled Integer32 
+}
+
+lbaHeroLeafID OBJECT-TYPE
+    SYNTAX      Unsigned32 
+    MAX-ACCESS  not-accessible 
+    STATUS      current
+    DESCRIPTION
+        "O nome do jogador."
+    ::= { lbaHeroLeafEntry 1 }
+
+lbaHeroLeafFilled OBJECT-TYPE
+    SYNTAX      Integer32 
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "O nome do jogador."
+    ::= { lbaHeroLeafEntry 2 }
+
+------------------------------------------------------------------------
+-- LBA Game Statistics 
+------------------------------------------------------------------------
+
+lbaBehaviourCurrent OBJECT-TYPE
+    SYNTAX      Unsigned32 
+    MAX-ACCESS  read-write 
+    STATUS      current
+    DESCRIPTION
+        "O nome do jogador."
+    ::= { lbaHeroBehaviour 1 }
+
+lbaBehaviourTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF LbaBehaviourEntry 
+    MAX-ACCESS  not-accessible 
+    STATUS      current
+    DESCRIPTION
+        "O nome do jogador."
+    ::= { lbaHeroBehaviour 2 }
+
+lbaBehaviourEntry OBJECT-TYPE
+    SYNTAX     LbaBehaviourEntry
+    MAX-ACCESS not-accessible 
+    STATUS     current
+    DESCRIPTION
+        "Linha de"
+        INDEX { lbaBehaviourID }
+    ::= { lbaBehaviourTable 1 }
+
+LbaBehaviourEntry ::= SEQUENCE {
+    lbaBehaviourID   Unsigned32,
+    lbaBehaviourName DisplayString 
+}
+
+lbaBehaviourID OBJECT-TYPE
+    SYNTAX      Unsigned32 
+    MAX-ACCESS  not-accessible 
+    STATUS      current
+    DESCRIPTION
+        "O nome do jogador."
+    ::= { lbaBehaviourEntry 1 }
+
+lbaBehaviourName OBJECT-TYPE
+    SYNTAX      DisplayString
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "O nome do jogador."
+    ::= { lbaBehaviourEntry 2 }
 
 -- Conformance
 ------------------------------------------------------------------------
 
 lbaMIBGroups      OBJECT IDENTIFIER ::= { lbaMIBConformance 1 }
 
-lbaMIBScalarsGroup OBJECT-GROUP
+lbaGameStatsGroup OBJECT-GROUP
     OBJECTS {
-        twsnLife
+        lbaGameRunning,
+        lbaGamePaused,
+        lbaGamePlayerName
     }
     STATUS  current
     DESCRIPTION
         "A collection of objects related to twsnAttrs."
     ::= { lbaMIBGroups 1 }
 
-END
+lbaHeroStatsGroup OBJECT-GROUP
+    OBJECTS {
+        lbaHeroMaxLife,
+        lbaHeroCurLife,
+        lbaHeroMaxMP,
+        lbaHeroCurMP,
+        lbaHeroKeys,
+        lbaHeroCash,
+        lbaHeroLeafFilled
+    }
+    STATUS  current
+    DESCRIPTION
+        "A collection of objects related to twsnAttrs."
+    ::= { lbaMIBGroups 2 }
 
+lbaHeroBehaviourGroup OBJECT-GROUP
+    OBJECTS {
+        lbaBehaviourCurrent,
+        lbaBehaviourName 
+    }
+    STATUS  current
+    DESCRIPTION
+        "A collection of objects related to twsnAttrs."
+    ::= { lbaMIBGroups 3 }
+
+END
