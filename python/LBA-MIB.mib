@@ -1,0 +1,69 @@
+LBA-MIB DEFINITIONS ::= BEGIN
+
+------------------------------------------------------------------------
+-- MIB for python-netsnmpagent's example threading_agent.py
+-- Copyright (c) 2012 Pieter Hollants <pieter@hollants.com>
+-- Licensed under the GNU Public License (GPL) version 3
+------------------------------------------------------------------------
+
+-- Imports
+IMPORTS
+    MODULE-IDENTITY, OBJECT-TYPE, Integer32, enterprises
+        FROM SNMPv2-SMI
+    DisplayString
+        FROM SNMPv2-TC
+    OBJECT-GROUP
+        FROM SNMPv2-CONF;
+
+-- Description and update information                                                                                                            
+lbaMIB MODULE-IDENTITY
+    LAST-UPDATED "201411290000Z"
+    ORGANIZATION "N/A"
+    CONTACT-INFO
+        "Editor:
+        Pieter Hollants
+        EMail: <pieter@hollants.com>"
+    DESCRIPTION
+        "A MIB for python-netsnmpagent's example threading_agent.py"
+
+    REVISION    "201411290000Z"
+    DESCRIPTION
+        "First version."
+
+    ::= { enterprises 12619 }
+
+-- Definition of MIB's root nodes
+
+lbaMIBObjects         OBJECT IDENTIFIER ::= { lbaMIB 1 }
+lbaMIBConformance     OBJECT IDENTIFIER ::= { lbaMIB 3 }
+
+twsnAttrs            OBJECT IDENTIFIER ::= { lbaMIBObjects 1 }
+
+------------------------------------------------------------------------
+-- Scalars
+------------------------------------------------------------------------
+
+twsnLife OBJECT-TYPE
+    SYNTAX      Integer32 
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "A string. Curious about its contents?"
+    ::= { twsnAttrs 1 }
+
+-- Conformance
+------------------------------------------------------------------------
+
+lbaMIBGroups      OBJECT IDENTIFIER ::= { lbaMIBConformance 1 }
+
+lbaMIBScalarsGroup OBJECT-GROUP
+    OBJECTS {
+        twsnLife
+    }
+    STATUS  current
+    DESCRIPTION
+        "A collection of objects related to twsnAttrs."
+    ::= { lbaMIBGroups 1 }
+
+END
+

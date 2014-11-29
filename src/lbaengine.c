@@ -1,29 +1,29 @@
 /** @file lbaengine.c
-	@brief
-	This file contains the main game engine routines
+    @brief
+    This file contains the main game engine routines
 
-	TwinEngine: a Little Big Adventure engine
-	
-	Copyright (C) 2013 The TwinEngine team \n
-	Copyright (C) 2008-2013 Prequengine team \n
-	Copyright (C) 2002-2007 The TwinEngine team \n
+    TwinEngine: a Little Big Adventure engine
+    
+    Copyright (C) 2013 The TwinEngine team \n
+    Copyright (C) 2008-2013 Prequengine team \n
+    Copyright (C) 2002-2007 The TwinEngine team \n
 
-	This program is free software; you can redistribute it and/or \n
-	modify it under the terms of the GNU General Public License \n
-	as published by the Free Software Foundation; either version 2 \n
-	of the License, or (at your option) any later version. \n
+    This program is free software; you can redistribute it and/or \n
+    modify it under the terms of the GNU General Public License \n
+    as published by the Free Software Foundation; either version 2 \n
+    of the License, or (at your option) any later version. \n
 
-	This program is distributed in the hope that it will be useful, \n
-	but WITHOUT ANY WARRANTY; without even the implied warranty of \n
-	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the \n
-	GNU General Public License for more details. \n
+    This program is distributed in the hope that it will be useful, \n
+    but WITHOUT ANY WARRANTY; without even the implied warranty of \n
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the \n
+    GNU General Public License for more details. \n
 
-	You should have received a copy of the GNU General Public License \n
-	along with this program; if not, write to the Free Software \n
-	Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+    You should have received a copy of the GNU General Public License \n
+    along with this program; if not, write to the Free Software \n
+    Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-	$URL$
-	$Id$
+    $URL$
+    $Id$
 */
 
 #include "lbaengine.h"
@@ -50,492 +50,581 @@
 #include "extra.h"
 #include "menuoptions.h"
 #include "collision.h"
+#include "sockmanager.h"
 
 #ifdef GAMEMOD
 #include "debug.h"
 #endif
 
+#ifndef MACOSX
+#include <SDL/SDL_mixer.h>
+#else
+#include <SDL_mixer/SDL_mixer.h>
+#endif
+#include <SDL/SDL_thread.h>
+
+#include <stdio.h>
+#include <unistd.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <stdlib.h>
+
 int32 isTimeFreezed = 0;
 int32 saveFreezedTime = 0;
 
+
+SDL_cond *end_game_cond;
+
 enum InventoryItems {
-	kiHolomap = 0,
-	kiMagicBall = 1,
-	kiUseSabre = 2,
-	kiBookOfBu = 5,
-	kiProtoPack = 12,
-	kiPinguin = 14,
-	kiBonusList = 26,
-	kiCloverLeaf = 27
+    kiHolomap = 0,
+    kiMagicBall = 1,
+    kiUseSabre = 2,
+    kiBookOfBu = 5,
+    kiProtoPack = 12,
+    kiPinguin = 14,
+    kiBonusList = 26,
+    kiCloverLeaf = 27
 };
 
 void freezeTime() {
-	if (!isTimeFreezed)
-		saveFreezedTime = lbaTime;
-	isTimeFreezed++;
+    if (!isTimeFreezed)
+        saveFreezedTime = lbaTime;
+    isTimeFreezed++;
 }
 
 void unfreezeTime() {
-	--isTimeFreezed;
-	if (isTimeFreezed == 0)
-		lbaTime = saveFreezedTime;
+    --isTimeFreezed;
+    if (isTimeFreezed == 0)
+        lbaTime = saveFreezedTime;
 }
 
 void processActorSamplePosition(int32 actorIdx) {
-	int32 channelIdx;
-	ActorStruct *actor = &sceneActors[actorIdx];
-	channelIdx = getActorChannel(actorIdx);
-	setSamplePosition(channelIdx, actor->X, actor->Y, actor->Z);
+    int32 channelIdx;
+    ActorStruct *actor = &sceneActors[actorIdx];
+    channelIdx = getActorChannel(actorIdx);
+    setSamplePosition(channelIdx, actor->X, actor->Y, actor->Z);
 }
 
 /** Game engine main loop
-	@return true if we want to show credit sequence */
+    @return true if we want to show credit sequence */
 int32 runGameEngine() { // mainLoopInteration
-	int32 a;
-	readKeys();
+    int32 a;
+    readKeys();
 
-	if (needChangeScene > -1) {
-		changeScene();
-	}
+    if (needChangeScene > -1) {
+        changeScene();
+    }
 
-	previousLoopPressedKey = loopPressedKey;
-	key  = pressedKey;
-	loopPressedKey = skipedKey;
-	loopCurrentKey = skipIntro;
+    previousLoopPressedKey = loopPressedKey;
+    key  = pressedKey;
+    loopPressedKey = skipedKey;
+    loopCurrentKey = skipIntro;
 
 #ifdef GAMEMOD
-	processDebug(loopCurrentKey);
+    processDebug(loopCurrentKey);
 #endif
 
-	if(canShowCredits != 0) {
-		// TODO: if current music playing != 8, than play_track(8);
-		if (skipIntro != 0) {
-			return 0;
-		}
-		if (pressedKey != 0) {
-			return 0;
-		}
-		if (skipedKey != 0) {
-			return 0;
-		}
-	} else {
-		// Process give up menu - Press ESC
-		if (skipIntro == 1 && sceneHero->life > 0 && sceneHero->entity != -1 && !sceneHero->staticFlags.bIsHidden) {
-			freezeTime();
-			if (giveupMenu()) {
-				unfreezeTime();
-				redrawEngineActions(1);
-				freezeTime();
-				saveGame(); // auto save game
-				quitGame = 0;
-				cfgfile.Quit = 0;
-				unfreezeTime();
-				return 0;
-			} else {
-				unfreezeTime();
-				redrawEngineActions(1);
-			}
-		}
+    if(canShowCredits != 0) {
+        // TODO: if current music playing != 8, than play_track(8);
+        if (skipIntro != 0) {
+            return 0;
+        }
+        if (pressedKey != 0) {
+            return 0;
+        }
+        if (skipedKey != 0) {
+            return 0;
+        }
+    } else {
+        // Process give up menu - Press ESC
+        if (skipIntro == 1 && sceneHero->life > 0 && sceneHero->entity != -1 && !sceneHero->staticFlags.bIsHidden) {
+            freezeTime();
+            if (giveupMenu()) {
+                unfreezeTime();
+                redrawEngineActions(1);
+                freezeTime();
+                saveGame(); // auto save game
+                quitGame = 0;
+                cfgfile.Quit = 0;
+                unfreezeTime();
+                return 0;
+            } else {
+                unfreezeTime();
+                redrawEngineActions(1);
+            }
+        }
 
-		// Process options menu - Press F6
-		if (loopCurrentKey == 0x40) {
-			int tmpLangCD = cfgfile.LanguageCDId;
-			freezeTime();
-			pauseSamples();
-			OptionsMenuSettings[5] = 15;
-			cfgfile.LanguageCDId = 0;
-			initTextBank(0);
-			optionsMenu();
-			cfgfile.LanguageCDId = tmpLangCD;
-			initTextBank(currentTextBank + 3);
-			//TODO: play music
-			resumeSamples();
-			unfreezeTime();
-			redrawEngineActions(1);
-		}
+        // Process options menu - Press F6
+        if (loopCurrentKey == 0x40) {
+            int tmpLangCD = cfgfile.LanguageCDId;
+            freezeTime();
+            pauseSamples();
+            OptionsMenuSettings[5] = 15;
+            cfgfile.LanguageCDId = 0;
+            initTextBank(0);
+            optionsMenu();
+            cfgfile.LanguageCDId = tmpLangCD;
+            initTextBank(currentTextBank + 3);
+            //TODO: play music
+            resumeSamples();
+            unfreezeTime();
+            redrawEngineActions(1);
+        }
 
-		// inventory menu
-		loopInventoryItem = -1;
-		if (loopCurrentKey == 0x36 && sceneHero->entity != -1 && sceneHero->controlMode == kManual) {
-			freezeTime();
-			processInventoryMenu();
-			
-			switch (loopInventoryItem) {
-			case kiHolomap:
-				printf("Use Inventory [kiHolomap] not implemented!\n");
-				break;
-			case kiMagicBall:
-				if (usingSabre == 1) {
-					initModelActor(0, 0);
-				}
-				usingSabre = 0;
-				break;
-			case kiUseSabre:
-				if (sceneHero->body != GAMEFLAG_HAS_SABRE) {
-					if (heroBehaviour == kProtoPack) {
-						setBehaviour(kNormal);
-					}
-					initModelActor(GAMEFLAG_HAS_SABRE, 0);
-					initAnim(24, 1, 0, 0);
+        // inventory menu
+        loopInventoryItem = -1;
+        if (loopCurrentKey == 0x36 && sceneHero->entity != -1 && sceneHero->controlMode == kManual) {
+            freezeTime();
+            processInventoryMenu();
+            
+            switch (loopInventoryItem) {
+            case kiHolomap:
+                printf("Use Inventory [kiHolomap] not implemented!\n");
+                break;
+            case kiMagicBall:
+                if (usingSabre == 1) {
+                    initModelActor(0, 0);
+                }
+                usingSabre = 0;
+                break;
+            case kiUseSabre:
+                if (sceneHero->body != GAMEFLAG_HAS_SABRE) {
+                    if (heroBehaviour == kProtoPack) {
+                        setBehaviour(kNormal);
+                    }
+                    initModelActor(GAMEFLAG_HAS_SABRE, 0);
+                    initAnim(24, 1, 0, 0);
 
-					usingSabre = 1;
-				}
-				break;
-			case kiBookOfBu: {
-				int32 tmpFlagDisplayText;
+                    usingSabre = 1;
+                }
+                break;
+            case kiBookOfBu: {
+                int32 tmpFlagDisplayText;
 
-				fadeToBlack(paletteRGBA);
-				loadImage(RESSHQR_INTROSCREEN1IMG, 1);
-				initTextBank(2);
-				newGameVar4 = 0;
-				textClipFull();
-				setFontCrossColor(15);
-				tmpFlagDisplayText = cfgfile.FlagDisplayText;
-				cfgfile.FlagDisplayText = 1;
-				drawTextFullscreen(161);
-				cfgfile.FlagDisplayText = tmpFlagDisplayText;
-				textClipSmall();
-				newGameVar4 = 1;
-				initTextBank(currentTextBank + 3);
-				fadeToBlack(paletteRGBACustom);
-				clearScreen();
-				flip();
-				setPalette(paletteRGBA);
-				lockPalette = 1;
-			}							 
-				break;
-			case kiProtoPack:
-				if (gameFlags[GAMEFLAG_BOOKOFBU]) {
-					sceneHero->body = 0;
-				} else {
-					sceneHero->body = 1;
-				}
+                fadeToBlack(paletteRGBA);
+                loadImage(RESSHQR_INTROSCREEN1IMG, 1);
+                initTextBank(2);
+                newGameVar4 = 0;
+                textClipFull();
+                setFontCrossColor(15);
+                tmpFlagDisplayText = cfgfile.FlagDisplayText;
+                cfgfile.FlagDisplayText = 1;
+                drawTextFullscreen(161);
+                cfgfile.FlagDisplayText = tmpFlagDisplayText;
+                textClipSmall();
+                newGameVar4 = 1;
+                initTextBank(currentTextBank + 3);
+                fadeToBlack(paletteRGBACustom);
+                clearScreen();
+                flip();
+                setPalette(paletteRGBA);
+                lockPalette = 1;
+            }                             
+                break;
+            case kiProtoPack:
+                if (gameFlags[GAMEFLAG_BOOKOFBU]) {
+                    sceneHero->body = 0;
+                } else {
+                    sceneHero->body = 1;
+                }
 
-				if (heroBehaviour == kProtoPack) {
-					setBehaviour(kNormal);
-				} else {
-					setBehaviour(kProtoPack);
-				}
-				break;
-			case kiPinguin: {
-				ActorStruct *pinguin = &sceneActors[mecaPinguinIdx];
-				
-				pinguin->X = destX + sceneHero->X;
-				pinguin->Y = sceneHero->Y;
-				pinguin->Z = destZ + sceneHero->Z;
-				pinguin->angle = sceneHero->angle;
+                if (heroBehaviour == kProtoPack) {
+                    setBehaviour(kNormal);
+                } else {
+                    setBehaviour(kProtoPack);
+                }
+                break;
+            case kiPinguin: {
+                ActorStruct *pinguin = &sceneActors[mecaPinguinIdx];
+                
+                pinguin->X = destX + sceneHero->X;
+                pinguin->Y = sceneHero->Y;
+                pinguin->Z = destZ + sceneHero->Z;
+                pinguin->angle = sceneHero->angle;
 
-				rotateActor(0, 800, pinguin->angle);
+                rotateActor(0, 800, pinguin->angle);
 
-				if (!checkCollisionWithActors(mecaPinguinIdx)) {
-					pinguin->life = 50;
-					pinguin->body = -1;
-					initModelActor(0, mecaPinguinIdx);
-					pinguin->dynamicFlags.bIsDead = 0; // &= 0xDF
+                if (!checkCollisionWithActors(mecaPinguinIdx)) {
+                    pinguin->life = 50;
+                    pinguin->body = -1;
+                    initModelActor(0, mecaPinguinIdx);
+                    pinguin->dynamicFlags.bIsDead = 0; // &= 0xDF
                     pinguin->brickShape = 0;
-					moveActor(pinguin->angle, pinguin->angle, pinguin->speed, &pinguin->move);
-					gameFlags[GAMEFLAG_MECA_PINGUIN] = 0; // byte_50D89 = 0;
+                    moveActor(pinguin->angle, pinguin->angle, pinguin->speed, &pinguin->move);
+                    gameFlags[GAMEFLAG_MECA_PINGUIN] = 0; // byte_50D89 = 0;
                     pinguin->info0 = lbaTime + 1500;
-				}
-			}
-				break;
-			case kiBonusList: {
-				int32 tmpLanguageCDIdx;
-				tmpLanguageCDIdx = cfgfile.LanguageCDId;
-				unfreezeTime();
-				redrawEngineActions(1);
-				freezeTime();
-				cfgfile.LanguageCDId = 0;
-				initTextBank(2);
-				textClipFull();
-				setFontCrossColor(15);
-				drawTextFullscreen(162);
-				textClipSmall();
-				cfgfile.LanguageCDId = tmpLanguageCDIdx;
-				initTextBank(currentTextBank + 3);
-			}
-				break;
-			case kiCloverLeaf:
-				if (sceneHero->life < 50) {
-					if (inventoryNumLeafs > 0) {
-						sceneHero->life = 50;
-						inventoryMagicPoints = magicLevelIdx * 20;
-						inventoryNumLeafs--;
-						addOverlay(koInventoryItem, 27, 0, 0, 0, koNormal, 3);
-					}
-				}
-				break;
-			}
+                }
+            }
+                break;
+            case kiBonusList: {
+                int32 tmpLanguageCDIdx;
+                tmpLanguageCDIdx = cfgfile.LanguageCDId;
+                unfreezeTime();
+                redrawEngineActions(1);
+                freezeTime();
+                cfgfile.LanguageCDId = 0;
+                initTextBank(2);
+                textClipFull();
+                setFontCrossColor(15);
+                drawTextFullscreen(162);
+                textClipSmall();
+                cfgfile.LanguageCDId = tmpLanguageCDIdx;
+                initTextBank(currentTextBank + 3);
+            }
+                break;
+            case kiCloverLeaf:
+                if (sceneHero->life < 50) {
+                    if (inventoryNumLeafs > 0) {
+                        sceneHero->life = 50;
+                        inventoryMagicPoints = magicLevelIdx * 20;
+                        inventoryNumLeafs--;
+                        addOverlay(koInventoryItem, 27, 0, 0, 0, koNormal, 3);
+                    }
+                }
+                break;
+            }
 
 
-			unfreezeTime();
-			redrawEngineActions(1);
-		}
+            unfreezeTime();
+            redrawEngineActions(1);
+        }
 
-		// Process behaviour menu - Press CTRL and F1..F4 Keys
-		if ((loopCurrentKey == 0x1D || loopCurrentKey == 0x3B || loopCurrentKey == 0x3C || loopCurrentKey == 0x3D || loopCurrentKey == 0x3E) && sceneHero->entity != -1 && sceneHero->controlMode == kManual) {
-			if (loopCurrentKey != 0x1D) {
-				heroBehaviour = loopCurrentKey - 0x3B;
-			}
-			freezeTime();
-			processBehaviourMenu();
-			unfreezeTime();
-			redrawEngineActions(1);
-		}	
+        // Process behaviour menu - Press CTRL and F1..F4 Keys
+        if ((loopCurrentKey == 0x1D || loopCurrentKey == 0x3B || loopCurrentKey == 0x3C || loopCurrentKey == 0x3D || loopCurrentKey == 0x3E) && sceneHero->entity != -1 && sceneHero->controlMode == kManual) {
+            if (loopCurrentKey != 0x1D) {
+                heroBehaviour = loopCurrentKey - 0x3B;
+            }
+            freezeTime();
+            processBehaviourMenu();
+            unfreezeTime();
+            redrawEngineActions(1);
+        }    
 
-		// use Proto-Pack
-		if (loopCurrentKey == 0x24 && gameFlags[GAMEFLAG_PROTOPACK] == 1) {
-			if (gameFlags[GAMEFLAG_BOOKOFBU]) {
-				sceneHero->body = 0;
-			} else {
-				sceneHero->body = 1;
-			}
+        // use Proto-Pack
+        if (loopCurrentKey == 0x24 && gameFlags[GAMEFLAG_PROTOPACK] == 1) {
+            if (gameFlags[GAMEFLAG_BOOKOFBU]) {
+                sceneHero->body = 0;
+            } else {
+                sceneHero->body = 1;
+            }
 
-			if (heroBehaviour == kProtoPack) {
-				setBehaviour(kNormal);
-			} else {
-				setBehaviour(kProtoPack);
-			}
-		}
+            if (heroBehaviour == kProtoPack) {
+                setBehaviour(kNormal);
+            } else {
+                setBehaviour(kProtoPack);
+            }
+        }
 
-		// Press Enter to Recenter Screen
-		if ((loopPressedKey & 2) && !disableScreenRecenter) {
-			newCameraX = sceneActors[currentlyFollowedActor].X >> 9;
-			newCameraY = sceneActors[currentlyFollowedActor].Y >> 8;
-			newCameraZ = sceneActors[currentlyFollowedActor].Z >> 9;
-			reqBgRedraw = 1;
-		}
+        // Press Enter to Recenter Screen
+        if ((loopPressedKey & 2) && !disableScreenRecenter) {
+            newCameraX = sceneActors[currentlyFollowedActor].X >> 9;
+            newCameraY = sceneActors[currentlyFollowedActor].Y >> 8;
+            newCameraZ = sceneActors[currentlyFollowedActor].Z >> 9;
+            reqBgRedraw = 1;
+        }
 
-		// TODO: draw holomap
+        // TODO: draw holomap
 
-		// Process Pause - Press P
-		if (loopCurrentKey == 0x19) {
-			freezeTime();
-			setFontColor(15);
-			drawText(5, 446, (int8*)"Pause"); // no key for pause in Text Bank
-			copyBlockPhys(5, 446, 100, 479);
-			do {
-				readKeys();
-				SDL_Delay(10);
-			} while (skipIntro != 0x19 && !pressedKey);
-			unfreezeTime();
-			redrawEngineActions(1);
-		}
-	}
+        // Process Pause - Press P
+        if (loopCurrentKey == 0x19) {
+            freezeTime();
+            setFontColor(15);
+            drawText(5, 446, (int8*)"Pause"); // no key for pause in Text Bank
+            copyBlockPhys(5, 446, 100, 479);
+            do {
+                readKeys();
+                SDL_Delay(10);
+            } while (skipIntro != 0x19 && !pressedKey);
+            unfreezeTime();
+            redrawEngineActions(1);
+        }
+    }
 
-	loopActorStep = getRealValue(&loopMovePtr);
-	if (!loopActorStep) {
-		loopActorStep = 1;
-	}
+    loopActorStep = getRealValue(&loopMovePtr);
+    if (!loopActorStep) {
+        loopActorStep = 1;
+    }
 
-	setActorAngle(0, -256, 5, &loopMovePtr);
-	disableScreenRecenter = 0;
+    setActorAngle(0, -256, 5, &loopMovePtr);
+    disableScreenRecenter = 0;
 
-	processEnvironmentSound();
+    processEnvironmentSound();
 
-	// Reset HitBy state
-	for (a = 0; a < sceneNumActors; a++)
+    // Reset HitBy state
+    for (a = 0; a < sceneNumActors; a++)
     {
         sceneActors[a].hitBy = -1;
     }
 
-	processExtras();
+    processExtras();
 
-	for (a = 0; a < sceneNumActors; a++) {
-		ActorStruct *actor = &sceneActors[a];
+    for (a = 0; a < sceneNumActors; a++) {
+        ActorStruct *actor = &sceneActors[a];
 
-		if (!actor->dynamicFlags.bIsDead) {
-			if (actor->life == 0) {
-				if (a == 0) { // if its hero who died
-					initAnim(kLandDeath, 4, 0, 0);
-					actor->controlMode = 0;
-				} else {
-					playSample(37, Rnd(2000) + 3096, 1, actor->X, actor->Y, actor->Z, a);
+        if (!actor->dynamicFlags.bIsDead) {
+            if (actor->life == 0) {
+                if (a == 0) { // if its hero who died
+                    initAnim(kLandDeath, 4, 0, 0);
+                    actor->controlMode = 0;
+                } else {
+                    playSample(37, Rnd(2000) + 3096, 1, actor->X, actor->Y, actor->Z, a);
 
-					if (a == mecaPinguinIdx) {
-						addExtraExplode(actor->X, actor->Y, actor->Z);
-					}
-				}
-				
-				if (actor->bonusParameter & 0x1F0 && !(actor->bonusParameter & 1)) {
-					processActorExtraBonus(a);
-				}
-			}
+                    if (a == mecaPinguinIdx) {
+                        addExtraExplode(actor->X, actor->Y, actor->Z);
+                    }
+                }
+                
+                if (actor->bonusParameter & 0x1F0 && !(actor->bonusParameter & 1)) {
+                    processActorExtraBonus(a);
+                }
+            }
 
-			processActorMovements(a);
+            processActorMovements(a);
 
-			actor->collisionX = actor->X;
-			actor->collisionY = actor->Y;
-			actor->collisionZ = actor->Z;
+            actor->collisionX = actor->X;
+            actor->collisionY = actor->Y;
+            actor->collisionZ = actor->Z;
 
-			if (actor->positionInMoveScript != -1) {
-				processMoveScript(a);
-			}
+            if (actor->positionInMoveScript != -1) {
+                processMoveScript(a);
+            }
 
-			processActorAnimations(a);
+            processActorAnimations(a);
 
-			if (actor->staticFlags.bIsZonable) {
-				processActorZones(a);
-			}
+            if (actor->staticFlags.bIsZonable) {
+                processActorZones(a);
+            }
 
-			if (actor->positionInLifeScript != -1) {
-				processLifeScript(a);
-			}
+            if (actor->positionInLifeScript != -1) {
+                processLifeScript(a);
+            }
 
-			processActorSamplePosition(a);
+            processActorSamplePosition(a);
 
-			if (quitGame != -1) {
-				return quitGame;
-			}
+            if (quitGame != -1) {
+                return quitGame;
+            }
 
-			if (actor->staticFlags.bCanDrown) {
-				int32 brickSound;
-				brickSound = getBrickSoundType(actor->X, actor->Y - 1, actor->Z);
-				actor->brickSound = brickSound;
+            if (actor->staticFlags.bCanDrown) {
+                int32 brickSound;
+                brickSound = getBrickSoundType(actor->X, actor->Y - 1, actor->Z);
+                actor->brickSound = brickSound;
 
-				if ((brickSound & 0xF0) == 0xF0) {
-					if ((brickSound & 0xF) == 1) {
-						if (a) { // all other actors
-							int32 rnd = Rnd(2000) + 3096;
-							playSample(0x25, rnd, 1, actor->X, actor->Y, actor->Z, a);
-							if (actor->bonusParameter & 0x1F0) {
-								if (!(actor->bonusParameter & 1)) {
-									processActorExtraBonus(a);
-								}
-								actor->life = 0;
-							}
-						} else { // if Hero
-							if (heroBehaviour != 4 || (brickSound & 0x0F) != actor->anim) {
-								if (!cropBottomScreen)
-								{
-									initAnim(kDrawn, 4, 0, 0);
-									projectPositionOnScreen(actor->X - cameraX, actor->Y - cameraY, actor->Z - cameraZ);
-									cropBottomScreen = projPosY;
-								}
-								projectPositionOnScreen(actor->X - cameraX, actor->Y - cameraY, actor->Z - cameraZ);
-								actor->controlMode = 0;
-								actor->life = -1;
-								cropBottomScreen = projPosY;
-								actor->staticFlags.bCanDrown |= 0x10;
-							}
-						}
-					}
-				}
-			}
+                if ((brickSound & 0xF0) == 0xF0) {
+                    if ((brickSound & 0xF) == 1) {
+                        if (a) { // all other actors
+                            int32 rnd = Rnd(2000) + 3096;
+                            playSample(0x25, rnd, 1, actor->X, actor->Y, actor->Z, a);
+                            if (actor->bonusParameter & 0x1F0) {
+                                if (!(actor->bonusParameter & 1)) {
+                                    processActorExtraBonus(a);
+                                }
+                                actor->life = 0;
+                            }
+                        } else { // if Hero
+                            if (heroBehaviour != 4 || (brickSound & 0x0F) != actor->anim) {
+                                if (!cropBottomScreen)
+                                {
+                                    initAnim(kDrawn, 4, 0, 0);
+                                    projectPositionOnScreen(actor->X - cameraX, actor->Y - cameraY, actor->Z - cameraZ);
+                                    cropBottomScreen = projPosY;
+                                }
+                                projectPositionOnScreen(actor->X - cameraX, actor->Y - cameraY, actor->Z - cameraZ);
+                                actor->controlMode = 0;
+                                actor->life = -1;
+                                cropBottomScreen = projPosY;
+                                actor->staticFlags.bCanDrown |= 0x10;
+                            }
+                        }
+                    }
+                }
+            }
 
-			if (actor->life <= 0) {
-				if (!a) { // if its Hero
-					if (actor->dynamicFlags.bAnimEnded) {
-						if (inventoryNumLeafs > 0) { // use clover leaf automaticaly
-							sceneHero->X = newHeroX;
-							sceneHero->Y = newHeroY;
-							sceneHero->Z = newHeroZ;
+            if (actor->life <= 0) {
+                if (!a) { // if its Hero
+                    if (actor->dynamicFlags.bAnimEnded) {
+                        if (inventoryNumLeafs > 0) { // use clover leaf automaticaly
+                            sceneHero->X = newHeroX;
+                            sceneHero->Y = newHeroY;
+                            sceneHero->Z = newHeroZ;
 
-							needChangeScene = currentSceneIdx;
-							inventoryMagicPoints = magicLevelIdx * 20;
+                            needChangeScene = currentSceneIdx;
+                            inventoryMagicPoints = magicLevelIdx * 20;
 
-							newCameraX = (sceneHero->X >> 9);
-							newCameraY = (sceneHero->Y >> 8);
-							newCameraZ = (sceneHero->Z >> 9);
+                            newCameraX = (sceneHero->X >> 9);
+                            newCameraY = (sceneHero->Y >> 8);
+                            newCameraZ = (sceneHero->Z >> 9);
 
-							heroPositionType = kReborn;
+                            heroPositionType = kReborn;
 
-							sceneHero->life = 50;
-							reqBgRedraw = 1;
-							lockPalette = 1;
-							inventoryNumLeafs--;
-							cropBottomScreen = 0;
-						} else { // game over
-							inventoryNumLeafsBox = 2;
-							inventoryNumLeafs = 1;
-							inventoryMagicPoints = magicLevelIdx * 20;
-							heroBehaviour = previousHeroBehaviour;
-							actor->angle  = previousHeroAngle;
-							actor->life = 50;
+                            sceneHero->life = 50;
+                            reqBgRedraw = 1;
+                            lockPalette = 1;
+                            inventoryNumLeafs--;
+                            cropBottomScreen = 0;
+                        } else { // game over
+                            inventoryNumLeafsBox = 2;
+                            inventoryNumLeafs = 1;
+                            inventoryMagicPoints = magicLevelIdx * 20;
+                            heroBehaviour = previousHeroBehaviour;
+                            actor->angle  = previousHeroAngle;
+                            actor->life = 50;
 
-							if (previousSceneIdx != currentSceneIdx) {
-								newHeroX = -1;
-								newHeroY = -1;
-								newHeroZ = -1;
-								currentSceneIdx = previousSceneIdx;
-							}
+                            if (previousSceneIdx != currentSceneIdx) {
+                                newHeroX = -1;
+                                newHeroY = -1;
+                                newHeroZ = -1;
+                                currentSceneIdx = previousSceneIdx;
+                            }
 
-							saveGame();
-							processGameoverAnimation();
-							quitGame = 0;
-							return 0;
-						}
-					}
-				} else {
-					processActorCarrier(a);
-					actor->dynamicFlags.bIsDead = 1;
-					actor->entity = -1;
-					actor->zone = -1;
-				}
-			}
+                            saveGame();
+                            processGameoverAnimation();
+                            quitGame = 0;
+                            return 0;
+                        }
+                    }
+                } else {
+                    processActorCarrier(a);
+                    actor->dynamicFlags.bIsDead = 1;
+                    actor->entity = -1;
+                    actor->zone = -1;
+                }
+            }
 
-			if (needChangeScene != -1) {
-				return 0;
-			}
-		}
-	}
+            if (needChangeScene != -1) {
+                return 0;
+            }
+        }
+    }
 
-	// recenter screen automatically
-	if (!disableScreenRecenter && !useFreeCamera) {
-		ActorStruct *actor = &sceneActors[currentlyFollowedActor];
-		projectPositionOnScreen(actor->X - (newCameraX << 9),
-								   actor->Y - (newCameraY << 8),
-								   actor->Z - (newCameraZ << 9));
-		if (projPosX < 80 || projPosX > 539 || projPosY < 80 || projPosY > 429) {
-			newCameraX = ((actor->X + 0x100) >> 9) + (((actor->X + 0x100) >> 9) - newCameraX) / 2;
-			newCameraY = actor->Y >> 8;
-			newCameraZ = ((actor->Z + 0x100) >> 9) + (((actor->Z + 0x100) >> 9) - newCameraZ) / 2;
+    // recenter screen automatically
+    if (!disableScreenRecenter && !useFreeCamera) {
+        ActorStruct *actor = &sceneActors[currentlyFollowedActor];
+        projectPositionOnScreen(actor->X - (newCameraX << 9),
+                                   actor->Y - (newCameraY << 8),
+                                   actor->Z - (newCameraZ << 9));
+        if (projPosX < 80 || projPosX > 539 || projPosY < 80 || projPosY > 429) {
+            newCameraX = ((actor->X + 0x100) >> 9) + (((actor->X + 0x100) >> 9) - newCameraX) / 2;
+            newCameraY = actor->Y >> 8;
+            newCameraZ = ((actor->Z + 0x100) >> 9) + (((actor->Z + 0x100) >> 9) - newCameraZ) / 2;
 
-			if(newCameraX >= 64) {
-				newCameraX = 63;
-			}
+            if(newCameraX >= 64) {
+                newCameraX = 63;
+            }
 
-			if(newCameraZ >= 64) {
-				newCameraZ = 63;
-			}
-			
-			reqBgRedraw = 1;
-		}
-	}
+            if(newCameraZ >= 64) {
+                newCameraZ = 63;
+            }
+            
+            reqBgRedraw = 1;
+        }
+    }
 
-	redrawEngineActions(reqBgRedraw);
+    redrawEngineActions(reqBgRedraw);
 
-	// workaround to fix hero redraw after drowning
-	if(cropBottomScreen && reqBgRedraw == 1) {
-		sceneHero->staticFlags.bIsHidden = 1;
-		redrawEngineActions(1);
-		sceneHero->staticFlags.bIsHidden = 0;
-	}
+    // workaround to fix hero redraw after drowning
+    if(cropBottomScreen && reqBgRedraw == 1) {
+        sceneHero->staticFlags.bIsHidden = 1;
+        redrawEngineActions(1);
+        sceneHero->staticFlags.bIsHidden = 0;
+    }
 
-	needChangeScene = -1;
-	reqBgRedraw = 0;
+    needChangeScene = -1;
+    reqBgRedraw = 0;
 
-	return 0;
+    return 0;
 }
 
+int32 gameEngineMainLoop(){
+    uint32 start;
+
+    reqBgRedraw = 1;
+    lockPalette = 1;
+    setActorAngle(0, -256, 5, &loopMovePtr);
+
+    while (quitGame == -1) {
+        start = SDL_GetTicks();
+
+        while (SDL_GetTicks() < start + cfgfile.Fps) {
+            if (runGameEngine())
+                return 1;
+            SDL_Delay(1);
+        }
+        lbaTime++;
+    }
+    return 0;
+}
+
+int gameEngineSocketLoop(void *sockfdArg) {
+    int *sockfd = (int *) sockfdArg;
+    int conn;
+
+    printf("[Socket Reporter] Aguardando conexao...");
+    conn = accept(*sockfd, NULL, NULL);
+    printf("[Socket Reporter] Conexao Estabelecida...");
+
+    socketMainLoop(conn);
+
+    return 0;
+}
+
+int createSocket() {
+    // Declara as variáveis
+    int sockfd;
+    struct sockaddr_un serv_addr;
+
+    char socket_file[256];
+    char *tmp_dir = getenv("TMPDIR");
+
+    if(!tmp_dir){
+        printf("Nao achou TMPDIR\n");
+        tmp_dir = calloc(sizeof(P_tmpdir), sizeof(char));
+        sprintf(tmp_dir, P_tmpdir);
+    }
+    printf("Usando: '%s'\n", tmp_dir);
+    sprintf(socket_file, "%s/socket", tmp_dir);
+    free(tmp_dir);
+
+    // Cria o socket
+    sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (sockfd < 0) 
+       printf("ERROR opening socket");
+
+    // Prepara o nome do socket
+    memset(&serv_addr, 0, sizeof(serv_addr));
+    serv_addr.sun_family = AF_UNIX;
+    strncpy(serv_addr.sun_path, socket_file, sizeof(serv_addr.sun_path)-1);
+
+    unlink(serv_addr.sun_path);
+
+    // Associa ele com o arquivo
+    if (bind(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)))
+        printf("ERROR on binding");
+
+    // Começa a escutar o socket 
+    listen(sockfd,5);
+
+    return sockfd;
+};
+
 /** Game engine main loop
-	@return true if we want to show credit sequence */
+    @return true if we want to show credit sequence */
 int32 gameEngineLoop() { // mainLoop
-	uint32 start;
+    SDL_Thread *main_loop, *socket_loop;
+    int32 main_loop_return;
+    int sockfd;
 
-	reqBgRedraw = 1;
-	lockPalette = 1;
-	setActorAngle(0, -256, 5, &loopMovePtr);
+    sockfd = createSocket();
+    end_game_cond = SDL_CreateCond();
 
-	while (quitGame == -1) {
-		start = SDL_GetTicks();
+    main_loop = SDL_CreateThread(gameEngineMainLoop, (void *)NULL);
+    socket_loop = SDL_CreateThread(gameEngineSocketLoop, (void *)(&sockfd));
 
-		while (SDL_GetTicks() < start + cfgfile.Fps) {
-			if (runGameEngine())
-				return 1;
-			SDL_Delay(1);
-		}
-		lbaTime++;
-	}
-	return 0;
+    // Depois paramos o jogo
+    SDL_WaitThread(main_loop, &main_loop_return);
+
+    SDL_KillThread(socket_loop);
+
+    return main_loop_return; 
+
 }

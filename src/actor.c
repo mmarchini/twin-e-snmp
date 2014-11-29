@@ -103,26 +103,26 @@ void setBehaviour(int32 behaviour) {
 	int32 bodyIdx;
 
 	switch (behaviour) {
-	case kNormal:
-		heroBehaviour = kNormal;
-		sceneHero->entityDataPtr = heroEntityNORMAL;
-		break;
-	case kAthletic:
-		heroBehaviour = kAthletic;
-		sceneHero->entityDataPtr = heroEntityATHLETIC;
-		break;
-	case kAggressive:
-		heroBehaviour = kAggressive;
-		sceneHero->entityDataPtr = heroEntityAGGRESSIVE;
-		break;
-	case kDiscrete:
-		heroBehaviour = kDiscrete;
-		sceneHero->entityDataPtr = heroEntityDISCRETE;
-		break;
-	case kProtoPack:
-		heroBehaviour = kProtoPack;
-		sceneHero->entityDataPtr = heroEntityPROTOPACK;
-		break;
+        case kNormal:
+            heroBehaviour = kNormal;
+            sceneHero->entityDataPtr = heroEntityNORMAL;
+            break;
+        case kAthletic:
+            heroBehaviour = kAthletic;
+            sceneHero->entityDataPtr = heroEntityATHLETIC;
+            break;
+        case kAggressive:
+            heroBehaviour = kAggressive;
+            sceneHero->entityDataPtr = heroEntityAGGRESSIVE;
+            break;
+        case kDiscrete:
+            heroBehaviour = kDiscrete;
+            sceneHero->entityDataPtr = heroEntityDISCRETE;
+            break;
+        case kProtoPack:
+            heroBehaviour = kProtoPack;
+            sceneHero->entityDataPtr = heroEntityPROTOPACK;
+            break;
 	};
 
 	bodyIdx = sceneHero->body;

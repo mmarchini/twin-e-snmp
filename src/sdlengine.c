@@ -31,7 +31,7 @@
 #include <string.h>
 
 #include <SDL/SDL.h>
-#include <SDL/SDL_thread.h>
+// #include <SDL/SDL_thread.h>
 #ifndef MACOSX
 #include <SDL/SDL_mixer.h>
 #else

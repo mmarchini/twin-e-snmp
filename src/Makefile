@@ -27,6 +27,7 @@ OBJS=actor.o \
 	redraw.o \
 	renderer.o \
 	resources.o \
+	sockmanager.o \
 	scene.o \
 	screens.o \
 	script.life.o \
