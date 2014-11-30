@@ -44,6 +44,8 @@
 #define GAMEFLAG_HAS_CLOVER_LEAF		27
 #define GAMEFLAG_INVENTORY_DISABLED		70
 
+#define PLAYER_NAME_LEN 30
+
 /** Magicball strength*/
 enum MagicballStrengthType {
 	kNoBallStrenght			= 2,
@@ -68,6 +70,8 @@ int16 magicBallAuxBounce; // magicBallParam
 /** Magic level index */
 int16 magicLevelIdx;
 
+int16 maxMagicPoints();
+
 /** Store the number of inventory keys */
 int16 inventoryNumKeys;
 /** Store the number of inventory kashes */
@@ -90,7 +94,7 @@ uint8 inventoryFlags[NUM_INVENTORY_ITEMS];
 /** Inventory used flags */
 uint8 holomapFlags[150]; // GV14
 
-int8 savePlayerName[30]; // playerName
+int8 savePlayerName[PLAYER_NAME_LEN]; // playerName
 
 int32 gameChoices[10]; // inGameMenuData
 int32 numChoices;      // numOfOptionsInChoice

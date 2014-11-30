@@ -249,7 +249,7 @@ int32 runGameEngine() { // mainLoopInteration
                 rotateActor(0, 800, pinguin->angle);
 
                 if (!checkCollisionWithActors(mecaPinguinIdx)) {
-                    pinguin->life = 50;
+                    pinguin->life = HERO_MAX_LIFE; // Penguin is a hero!
                     pinguin->body = -1;
                     initModelActor(0, mecaPinguinIdx);
                     pinguin->dynamicFlags.bIsDead = 0; // &= 0xDF
@@ -277,10 +277,10 @@ int32 runGameEngine() { // mainLoopInteration
             }
                 break;
             case kiCloverLeaf:
-                if (sceneHero->life < 50) {
+                if (sceneHero->life < HERO_MAX_LIFE) {
                     if (inventoryNumLeafs > 0) {
-                        sceneHero->life = 50;
-                        inventoryMagicPoints = magicLevelIdx * 20;
+                        sceneHero->life = HERO_MAX_LIFE;
+                        inventoryMagicPoints = maxMagicPoints();
                         inventoryNumLeafs--;
                         addOverlay(koInventoryItem, 27, 0, 0, 0, koNormal, 3);
                     }
@@ -453,7 +453,7 @@ int32 runGameEngine() { // mainLoopInteration
                             sceneHero->Z = newHeroZ;
 
                             needChangeScene = currentSceneIdx;
-                            inventoryMagicPoints = magicLevelIdx * 20;
+                            inventoryMagicPoints = maxMagicPoints();
 
                             newCameraX = (sceneHero->X >> 9);
                             newCameraY = (sceneHero->Y >> 8);
@@ -461,7 +461,7 @@ int32 runGameEngine() { // mainLoopInteration
 
                             heroPositionType = kReborn;
 
-                            sceneHero->life = 50;
+                            sceneHero->life = HERO_MAX_LIFE;
                             reqBgRedraw = 1;
                             lockPalette = 1;
                             inventoryNumLeafs--;
@@ -469,10 +469,10 @@ int32 runGameEngine() { // mainLoopInteration
                         } else { // game over
                             inventoryNumLeafsBox = 2;
                             inventoryNumLeafs = 1;
-                            inventoryMagicPoints = magicLevelIdx * 20;
+                            inventoryMagicPoints = maxMagicPoints();
                             heroBehaviour = previousHeroBehaviour;
                             actor->angle  = previousHeroAngle;
-                            actor->life = 50;
+                            actor->life = HERO_MAX_LIFE;
 
                             if (previousSceneIdx != currentSceneIdx) {
                                 newHeroX = -1;

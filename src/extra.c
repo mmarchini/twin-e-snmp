@@ -896,15 +896,15 @@ void processExtras() {
 
 					if (extra->info0 == SPRITEHQR_LIFEPOINTS) {
 						sceneHero->life += extra->info1;
-						if (sceneHero->life > 50) {
-							sceneHero->life = 50;
+						if (sceneHero->life > HERO_MAX_LIFE) {
+							sceneHero->life = HERO_MAX_LIFE;
 						}
 					}
 
 					if (extra->info0 == SPRITEHQR_MAGICPOINTS && magicLevelIdx) {
 						inventoryMagicPoints += extra->info1 * 2;
-						if (inventoryMagicPoints > magicLevelIdx * 20) {
-							inventoryMagicPoints = magicLevelIdx * 20;
+						if (inventoryMagicPoints > maxMagicPoints()) {
+							inventoryMagicPoints = maxMagicPoints();
 						}
 					}
 

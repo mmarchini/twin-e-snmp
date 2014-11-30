@@ -48,6 +48,10 @@
 
 #define SAVE_DIR "save/"
 
+int16 maxMagicPoints() {
+    return magicLevelIdx * 20;
+}
+
 int32 magicLevelStrengthOfHit[] = {
 	kNoBallStrenght,
 	kYellowBallStrenght,
@@ -127,7 +131,7 @@ void initHeroVars() { // reinitAll3
 	usingSabre = 0;
 
 	sceneHero->body = 0;
-	sceneHero->life = 50;
+	sceneHero->life = HERO_MAX_LIFE;
 	sceneHero->talkColor = 4;
 }
 

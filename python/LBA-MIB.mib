@@ -160,7 +160,7 @@ lbaHeroLeafFilled OBJECT-TYPE
     ::= { lbaHeroLeafEntry 2 }
 
 ------------------------------------------------------------------------
--- LBA Game Statistics 
+-- LBA Hero Behaviour
 ------------------------------------------------------------------------
 
 lbaBehaviourCurrent OBJECT-TYPE

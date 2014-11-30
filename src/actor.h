@@ -37,6 +37,8 @@
 /** Total number of bodies allowed in the game */
 #define NUM_BODIES 200
 
+#define HERO_MAX_LIFE 50
+
 enum HeroBehaviourType {
 	kNormal		= 0,
 	kAthletic	= 1,

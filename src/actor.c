@@ -424,7 +424,7 @@ void resetActor(int16 actorIdx) {
 	memset(&actor->staticFlags,0,2);
 	memset(&actor->dynamicFlags,0,2);
 
-	actor->life = 50;
+	actor->life = HERO_MAX_LIFE;
 	actor->armor = 1;
 	actor->hitBy = -1;
 	actor->lastRotationAngle = 0;

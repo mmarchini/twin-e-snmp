@@ -1001,7 +1001,7 @@ int32 lPOS_POINT(int32 actorIdx, ActorStruct *actor) {
 /*0x3B*/
 int32 lSET_MAGIC_LEVEL(int32 actorIdx, ActorStruct *actor) {
 	magicLevelIdx = *(scriptPtr++);
-	inventoryMagicPoints = magicLevelIdx * 20;
+	inventoryMagicPoints = maxMagicPoints();
 	return 0;
 }
 
@@ -1215,7 +1215,7 @@ int32 lSAY_MESSAGE_OBJ(int32 actorIdx, ActorStruct *actor) {
 
 /*0x4F*/
 int32 lFULL_POINT(int32 actorIdx, ActorStruct *actor) {
-	sceneHero->life = 50;
+	sceneHero->life = HERO_MAX_LIFE;
 	inventoryMagicPoints = magicLevelIdx * 20;
 	return 0;
 }
@@ -1424,7 +1424,7 @@ int32 lGAME_OVER(int32 actorIdx, ActorStruct *actor) {
 int32 lTHE_END(int32 actorIdx, ActorStruct *actor) {
 	quitGame = 1;
 	inventoryNumLeafs = 0;
-	sceneHero->life = 50;
+	sceneHero->life = HERO_MAX_LIFE;
 	inventoryMagicPoints = 80;
 	currentSceneIdx = 113;
 	heroBehaviour = previousHeroBehaviour;
