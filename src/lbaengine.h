@@ -39,6 +39,8 @@ volatile int32 lbaTime;
 int16 leftMouse;
 int16 rightMouse;
 
+int32 isTimeFreezedFn();
+
 /** Work video buffer */
 uint8 *workVideoBuffer;
 /** Main game video buffer */

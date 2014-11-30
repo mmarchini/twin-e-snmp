@@ -86,6 +86,10 @@ enum InventoryItems {
     kiCloverLeaf = 27
 };
 
+int32 isTimeFreezedFn() {
+    return isTimeFreezed;
+}
+
 void freezeTime() {
     if (!isTimeFreezed)
         saveFreezedTime = lbaTime;

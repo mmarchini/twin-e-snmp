@@ -57,6 +57,7 @@ class TwinSocket(object):
                 str_method += "\0"*(255-len(str_method)) # padding
                 self._client.send(str_method)
             except socket.error:
+                print "Cliente desconectado!"
                 self._client = None
                 return None
 
@@ -66,8 +67,32 @@ class TwinSocket(object):
 
         return striped
 
-    def getLife(self,):
+    ###################
+    # Game Statistics #
+    ###################
+
+    def isRunning(self):
+        self._communicate(-1)
+        return self._client and 1 or 0
+
+    def getPaused(self,):
         returned_value = self._communicate(0)
+        if returned_value == None:
+            return 0
+        return int(returned_value)
+
+    def getPlayerName(self,):
+        returned_value = self._communicate(1)
+        if returned_value == None:
+            return ""
+        return returned_value
+
+    ###################
+    # Hero Statistics #
+    ###################
+
+    def getLife(self,):
+        returned_value = self._communicate(3)
         if returned_value == None:
             return 0
         return int(returned_value)
@@ -80,7 +105,9 @@ class LBAAgent(object):
         server_address = os.path.join(tempfile.gettempdir(), 'twin_socket')
         self._twin_socket = TwinSocket(server_address)
 
-        self._create_twsnLife()
+        self._lbaGameRunning()
+        self._lbaGamePaused()
+        self._lbaGamePlayerName()
 
     def _create_agent(self, mastersocket, persistencedir):
         current_path = os.path.abspath(os.path.dirname(sys.argv[0]))
@@ -95,7 +122,68 @@ class LBAAgent(object):
 
         return agent
 
-    def _create_twsnLife(self, ):
+    #######################
+    # LBA Game Statistics #
+    #######################
+
+    def _lbaGameRunning(self, ):
+
+        running = self._agent.Unsigned32(
+            oidstr  = "LBA-MIB::lbaGameRunning",
+            initval = 0
+        )
+
+        def running_updater():
+
+            while True:
+                sleep(1)
+                running.update(self._twin_socket.isRunning())
+
+        t = threading.Thread(target=running_updater)
+        t.daemon = True
+        t.start()
+
+    def _lbaGamePaused(self, ):
+
+        # Register the only SNMP object we server, a DisplayString
+        paused = self._agent.Unsigned32(
+            oidstr  = "LBA-MIB::lbaGamePaused",
+            initval = 0
+        )
+
+        def paused_updater():
+
+            while True:
+                sleep(1)
+                paused.update(self._twin_socket.getPaused())
+
+        t = threading.Thread(target=paused_updater)
+        t.daemon = True
+        t.start()
+
+    def _lbaGamePlayerName(self, ):
+
+        # Register the only SNMP object we server, a DisplayString
+        player_name = self._agent.DisplayString(
+            oidstr  = "LBA-MIB::lbaGamePlayerName",
+            initval = ""
+        )
+
+        def player_name_updater():
+
+            while True:
+                sleep(1)
+                player_name.update(self._twin_socket.getPlayerName())
+
+        t = threading.Thread(target=player_name_updater)
+        t.daemon = True
+        t.start()
+
+    #######################
+    # LBA Hero Statistics #
+    #######################
+
+    def _getLife(self, ):
 
         # Register the only SNMP object we server, a DisplayString
         twsnLife = self._agent.Integer32(

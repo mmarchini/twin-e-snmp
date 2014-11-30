@@ -22,47 +22,75 @@ Lista de coisas:
 #include "scene.h"
 #include "gamestate.h"
 #include "sockmanager.h"
+#include "lbaengine.h"
+
+#define RESPONSE_SIZE 255
 
 // "SocketAction"
 
 enum SocketAction {
-    getLife        = 0,
-    getMagicPoints = 1,
-    getBehaviour   = 2
+    // Game Statistics
+    getPaused      = 0,
+    getPlayerName  = 1,
+    // Player Statistics
+    getLife        = 3,
+    getMagicPoints = 4,
+    getBehaviour   = 5
 };
+
+void intToResponse(int value, char *msg){
+    bzero(msg, RESPONSE_SIZE);
+    sprintf(msg, "%d", value);
+}
+
+void strToResponse(char *str, char *msg){
+    bzero(msg, RESPONSE_SIZE);
+    sprintf(msg, "%s", str);
+}
+
+void sendResponse(int sockfd, char *response) {
+    printf("[Socket Reporter] Enviando: '%s'\n", response);
+    write(sockfd, response, RESPONSE_SIZE);
+}
 
 int socketMainLoop(int sockfd) {
     int action;
-    char buffer[256];
+//    int responseAux;
+    char buffer[RESPONSE_SIZE+1];
+    bzero(buffer, RESPONSE_SIZE+1);
 
 
     while(1){
         bzero(buffer, 256);
         printf("[Socket Reporter] Aguardando...");
-        read(sockfd, buffer, 255);
+        read(sockfd, buffer, RESPONSE_SIZE);
         sscanf(buffer, "%d", &action);
         printf("[Socket Reporter] Recebido '%d'\n", action);
         
         switch (action) {
+            case getPaused:
+                intToResponse(isTimeFreezedFn(), buffer);
+                sendResponse(sockfd, buffer);
+                break;
+            case getPlayerName:
+                strToResponse(savePlayerName, buffer);
+                sendResponse(sockfd, buffer);
+                break;
             case getLife:
-                bzero(buffer, 256);
-                
-                sprintf(buffer, "%d", sceneHero->life);
-                printf("[Socket Reporter] Enviando: '%s'\n", buffer);
-                write(sockfd, buffer, 255);
+                intToResponse(sceneHero->life, buffer);
+                sendResponse(sockfd, buffer);
                 break;
             case getMagicPoints:
-                bzero(buffer, 256);
-                sprintf(buffer, "%d", inventoryMagicPoints);
-                write(sockfd, buffer, 255);
+                intToResponse(inventoryMagicPoints, buffer);
+                sendResponse(sockfd, buffer);
                 break;
             case getBehaviour:
-                bzero(buffer, 256);
-                sprintf(buffer, "%d", heroBehaviour);
-                write(sockfd, buffer, 255);
+                intToResponse(heroBehaviour, buffer);
+                sendResponse(sockfd, buffer);
                 break;
             default:
-                perror("[Socket Reportar] Invalid action!");
+                bzero(buffer, RESPONSE_SIZE);
+                sendResponse(sockfd, buffer);
                 break;
         }
     }
