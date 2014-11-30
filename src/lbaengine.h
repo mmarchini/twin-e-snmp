@@ -40,6 +40,7 @@ int16 leftMouse;
 int16 rightMouse;
 
 int32 isTimeFreezedFn();
+int32 setTimeFreezed(int32 n);
 
 /** Work video buffer */
 uint8 *workVideoBuffer;

@@ -23,6 +23,7 @@ Lista de coisas:
 #include "gamestate.h"
 #include "sockmanager.h"
 #include "lbaengine.h"
+#include "keyboard.h"
 
 #define RESPONSE_SIZE 255
 
@@ -101,7 +102,8 @@ int socketMainLoop(int sockfd) {
              //---------------------//
             // LBA Game Statistics //
             case getPaused: // Indica se o jogo está pausado  TODO 
-                intToResponse(isTimeFreezedFn(), buffer);
+                intValue = loopCurrentKey == 0x19;
+                intToResponse(intValue, buffer);
                 sendResponse(sockfd, buffer);
                 break;
             case getPlayerName: // Responde com o nome do jogador
@@ -162,7 +164,7 @@ int socketMainLoop(int sockfd) {
             // SETTERS //
            /////////////
             case setPaused: // TODO
-                intToResponse(isTimeFreezedFn(), buffer);
+                intToResponse(loopCurrentKey == 0x19, buffer);
                 sendResponse(sockfd, buffer);
                 break;
             case setPlayerName:

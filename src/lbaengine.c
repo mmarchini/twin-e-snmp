@@ -86,6 +86,11 @@ enum InventoryItems {
     kiCloverLeaf = 27
 };
 
+int32 setTimeFreezed(int32 n) {
+    isTimeFreezed = n;
+    return isTimeFreezed;
+}
+
 int32 isTimeFreezedFn() {
     return isTimeFreezed;
 }
