@@ -13,6 +13,14 @@ que também exerce o papel de Gerente SNMP, se comunicando com o Agente respons�
 O código presente nesse repositório é um fork do projeto TwinEngine, buscando adicionar uma forma do Agente SNMP
 obter e alterar os dados do jogo, através de UNIX Sockets.
 
+Os arquivos relevantes para a implementação da comunicação entre o agente e o jogo são os seguintes:
+
+```bash
+src/sockmanager.c
+src/sockmanager.h
+src/lbaengine.c
+```
+
 # TwinEngine: a Little Big Adventure engine
 	
 Copyright (C) 2013 The TwinEngine team
@@ -78,6 +86,7 @@ file to that location. Go to that dir and type "./twin-e"
 
 If you are a Ubuntu user, the procedure should look like this:
 
+```bash
 sudo apt-get install libsdl1.2-dev libsdl-mixer1.2-dev libsdl-ttf2.0-dev
 cd trunk/src
 make
@@ -85,6 +94,7 @@ cp ./lba.cfg ~/Desktop/lba/
 cp ./twin-e ~/Desktop/lba/
 cd ~/Desktop/lba
 ./twin-e
+```
 
 (supposing that you have made a copy of the LBA1 CDROM's "lba" directory in your Desktop)
 
